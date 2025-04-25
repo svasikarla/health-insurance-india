@@ -11,6 +11,7 @@ import { ScenarioBasedLearning } from "./policy-bare-open/scenario-based-learnin
 import { VisualRiskCalculator } from "./policy-bare-open/visual-risk-calculator"
 import { RedFlagHighlights } from "./policy-bare-open/red-flag-highlights"
 import { VisualClauseMap } from "./policy-bare-open/visual-clause-map"
+import { InsuranceRadarChart, type InsuranceParameter } from "./policy-bare-open/insurance-radar-chart"
 import { getTopInsurancePlans, getPolicyFeatures } from "@/lib/supabase"
 
 type FormData = {
@@ -189,6 +190,35 @@ export function PlanRecommendation({ formData, onReset }: PlanRecommendationProp
         },
       ],
     }
+  }
+
+  // Prepare data for radar chart visualization
+  const prepareRadarChartData = (plan: InsurancePlan): InsuranceParameter[] => {
+    // Normalize scores to 0-100 range
+    // Claim settlement ratio is already in percentage (0-100)
+    // For network hospitals, use a logarithmic scale (5000+ is good)
+    const networkHospitalScore = Math.min(100, Math.round((Math.log10(Math.max(1, plan.network_hospitals_count)) / Math.log10(10000)) * 100))
+    
+    // For co-payment, lower is better (0% is ideal)
+    const coPaymentScore = Math.round((1 - plan.co_payment) * 100)
+    
+    // For pre/post hospitalization days, higher is better (60/90 days is ideal)
+    const preHospitalizationScore = Math.min(100, Math.round((plan.pre_hospitalization_days / 60) * 100))
+    const postHospitalizationScore = Math.min(100, Math.round((plan.post_hospitalization_days / 90) * 100))
+    
+    // For premium affordability, calculate based on user's budget
+    // Lower premium relative to budget is better
+    const budget = Number(formData.budget)
+    const premiumAffordabilityScore = Math.min(100, Math.round((1 - (plan.annual_premium / budget)) * 100))
+    
+    return [
+      { name: "Claim Settlement", value: plan.claim_settlement_ratio, fullMark: 100 },
+      { name: "Network Hospitals", value: networkHospitalScore, fullMark: 100 },
+      { name: "Co-payment", value: coPaymentScore, fullMark: 100 },
+      { name: "Pre-Hospitalization", value: preHospitalizationScore, fullMark: 100 },
+      { name: "Post-Hospitalization", value: postHospitalizationScore, fullMark: 100 },
+      { name: "Affordability", value: premiumAffordabilityScore, fullMark: 100 },
+    ]
   }
 
   // Get fallback data in case of API errors
@@ -705,7 +735,22 @@ export function PlanRecommendation({ formData, onReset }: PlanRecommendationProp
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold mb-3">Why We Recommend This</h3>
-                      <ul className="space-y-2">
+                      
+                      {/* Add radar chart for policy visualization */}
+                      {recommendedPlans.length > 0 && (
+                        <div className="mb-4">
+                          <InsuranceRadarChart 
+                            data={prepareRadarChartData(recommendedPlans[0])} 
+                            title="Policy Performance Analysis"
+                          />
+                          <p className="text-sm text-gray-500 mt-2 text-center">
+                            This spider diagram shows how the policy performs across key parameters. 
+                            Higher values (closer to the outer edge) indicate better performance.
+                          </p>
+                        </div>
+                      )}
+                      
+                      <ul className="space-y-2 mt-4">
                         {recommendedPlan.whyRecommended.map((reason, index) => (
                           <li key={index} className="flex items-start gap-2">
                             <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
@@ -728,6 +773,17 @@ export function PlanRecommendation({ formData, onReset }: PlanRecommendationProp
                                   {plan.suitabilityScore}% Match
                                 </div>
                               </div>
+                              
+                              {/* Only add radar chart for alternative plans when screen is large enough */}
+                              {recommendedPlans.length > index + 1 && (
+                                <div className="hidden md:block my-2">
+                                  <InsuranceRadarChart 
+                                    data={prepareRadarChartData(recommendedPlans[index + 1])} 
+                                    title={`${plan.name} Analysis`}
+                                  />
+                                </div>
+                              )}
+                              
                               <div className="flex justify-between text-sm">
                                 <span>
                                   Premium: <span className="font-medium">{plan.premium}</span>
