@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Mic, MicOff, Send } from "lucide-react"
+import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react"
 import { useLanguage } from "./language-provider"
+import { AudioPlayer } from "./audio-player"
 
 type Message = {
   id: string
@@ -12,6 +13,7 @@ type Message = {
   sender: "user" | "bot"
   timestamp: Date
   role?: "user" | "assistant" // For OpenAI API
+  audioData?: string | null // Base64 encoded audio data
 }
 
 // Initial welcome messages for each language
@@ -53,6 +55,7 @@ export function Chatbot() {
       sender: "bot",
       role: "assistant",
       timestamp: new Date(),
+      audioData: null,
     };
     setMessages([initialMessage]);
 
@@ -74,6 +77,7 @@ export function Chatbot() {
         sender: "bot",
         role: "assistant",
         timestamp: new Date(),
+        audioData: null,
       };
       setMessages(prev => [...prev, languageChangeMessage]);
     }
@@ -138,6 +142,7 @@ export function Chatbot() {
         sender: "bot",
         role: "assistant",
         timestamp: new Date(),
+        audioData: data.audioData || null,
       }
 
       setMessages((prev) => [...prev, botMessage])
@@ -158,6 +163,7 @@ export function Chatbot() {
         sender: "bot",
         role: "assistant",
         timestamp: new Date(),
+        audioData: null,
       }
 
       setMessages((prev) => [...prev, botMessage])
@@ -198,6 +204,11 @@ export function Chatbot() {
                   minute: "2-digit",
                 })}
               </p>
+              {message.sender === "bot" && message.audioData && (
+                <div className="mt-2">
+                  <AudioPlayer audioSrc={message.audioData} />
+                </div>
+              )}
             </div>
           </div>
         ))}
