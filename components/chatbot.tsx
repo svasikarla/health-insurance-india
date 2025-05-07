@@ -11,14 +11,31 @@ type Message = {
   text: string
   sender: "user" | "bot"
   timestamp: Date
+  role?: "user" | "assistant" // For OpenAI API
+}
+
+// Initial welcome messages for each language
+const welcomeMessages: Record<string, string> = {
+  english: "Hello! I'm your health insurance assistant. How can I help you today?",
+  hindi: "नमस्ते! मैं आपका स्वास्थ्य बीमा सहायक हूं। आज मैं आपकी कैसे मदद कर सकता हूं?",
+  tamil: "வணக்கம்! நான் உங்கள் சுகாதார காப்பீட்டு உதவியாளர். இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?",
+  telugu: "హలో! నేను మీ ఆరోగ్య బీమా సహాయకుడిని. నేడు నేను మీకు ఎలా సహాయం చేయగలను?",
+  bengali: "হ্যালো! আমি আপনার স্বাস্থ্য বীমা সহকারী। আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?",
+  marathi: "नमस्कार! मी तुमचा आरोग्य विमा सहाय्यक आहे. आज मी तुम्हाला कशी मदत करू शकतो?",
+  gujarati: "નમસ્તે! હું તમારો આરોગ્ય વીમા સહાયક છું. આજે હું તમને કેવી રીતે મદદ કરી શકું?",
+  kannada: "ಹಲೋ! ನಾನು ನಿಮ್ಮ ಆರೋಗ್ಯ ವಿಮಾ ಸಹಾಯಕ. ಇಂದು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?",
+  malayalam: "ഹലോ! ഞാൻ നിങ്ങളുടെ ആരോഗ്യ ഇൻഷുറൻസ് അസിസ്റ്റന്റ് ആണ്. ഇന്ന് എനിക്ക് നിങ്ങളെ എങ്ങനെ സഹായിക്കാൻ കഴിയും?",
+  punjabi: "ਹੈਲੋ! ਮੈਂ ਤੁਹਾਡਾ ਸਿਹਤ ਬੀਮਾ ਸਹਾਇਕ ਹਾਂ। ਅੱਜ ਮੈਂ ਤੁਹਾਡੀ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ?",
 }
 
 export function Chatbot() {
+  const { language } = useLanguage()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello! I'm your health insurance assistant. How can I help you today?",
+      text: welcomeMessages[language] || welcomeMessages.english,
       sender: "bot",
+      role: "assistant",
       timestamp: new Date(),
     },
   ])
@@ -26,7 +43,45 @@ export function Chatbot() {
   const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { language } = useLanguage()
+
+  // Initialize welcome message
+  useEffect(() => {
+    // Set the initial welcome message only once
+    const initialMessage = {
+      id: "1",
+      text: welcomeMessages[language] || welcomeMessages.english,
+      sender: "bot",
+      role: "assistant",
+      timestamp: new Date(),
+    };
+    setMessages([initialMessage]);
+
+    // We don't include any dependencies to ensure this only runs once on component mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Handle language changes by adding a system message
+  const [prevLanguage, setPrevLanguage] = useState(language);
+  useEffect(() => {
+    // Skip on initial render
+    if (prevLanguage === language) return;
+
+    // Add a system message about language change if there's already conversation
+    if (messages.length > 1) {
+      const languageChangeMessage = {
+        id: `lang-change-${Date.now()}`,
+        text: welcomeMessages[language] || welcomeMessages.english,
+        sender: "bot",
+        role: "assistant",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, languageChangeMessage]);
+    }
+
+    // Update previous language
+    setPrevLanguage(language);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language])
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -41,6 +96,7 @@ export function Chatbot() {
       id: Date.now().toString(),
       text: input,
       sender: "user",
+      role: "user",
       timestamp: new Date(),
     }
 
@@ -48,25 +104,66 @@ export function Chatbot() {
     setInput("")
     setIsProcessing(true)
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponses: Record<string, string> = {
-        english: "I understand you're looking for health insurance information. How can I assist you further?",
-        hindi: "मुझे समझ में आता है कि आप स्वास्थ्य बीमा जानकारी की तलाश कर रहे हैं। मैं आपकी और कैसे सहायता कर सकता हूं?",
-        tamil: "நீங்கள் சுகாதார காப்பீட்டுத் தகவல்களைத் தேடுகிறீர்கள் என்பதை நான் புரிந்துகொள்கிறேன். நான் உங்களுக்கு மேலும் எவ்வாறு உதவ முடியும்?",
-        // Add responses for other languages
+    try {
+      // Prepare conversation history for OpenAI
+      const conversationHistory = messages
+        .filter(msg => msg.role) // Only include messages with role
+        .map(msg => ({
+          role: msg.role as "user" | "assistant",
+          content: msg.text
+        }))
+
+      // Call our OpenAI API route
+      const response = await fetch("/api/openai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: input,
+          language,
+          conversationHistory,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to get response from AI")
       }
+
+      const data = await response.json()
 
       const botMessage: Message = {
         id: Date.now().toString(),
-        text: botResponses[language] || botResponses.english,
+        text: data.text,
         sender: "bot",
+        role: "assistant",
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, botMessage])
+    } catch (error) {
+      console.error("Error getting AI response:", error)
+
+      // Fallback message in case of error
+      const errorMessages: Record<string, string> = {
+        english: "I'm sorry, I'm having trouble connecting to my knowledge base. Please try again later.",
+        hindi: "मुझे खेद है, मुझे अपने ज्ञान आधार से जुड़ने में समस्या हो रही है। कृपया बाद में पुनः प्रयास करें।",
+        tamil: "மன்னிக்கவும், எனது அறிவுத் தளத்துடன் இணைப்பதில் எனக்கு சிரமம் ஏற்படுகிறது. தயவுசெய்து பின்னர் மீண்டும் முயற்சிக்கவும்.",
+        // Add fallback messages for other languages as needed
+      }
+
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: errorMessages[language] || errorMessages.english,
+        sender: "bot",
+        role: "assistant",
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, botMessage])
+    } finally {
       setIsProcessing(false)
-    }, 1000)
+    }
   }
 
   // Handle voice recording toggle
