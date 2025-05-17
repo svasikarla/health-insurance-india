@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import {
   RadarChart,
   PolarGrid,
@@ -21,124 +21,196 @@ export type InsuranceParameter = {
 type InsuranceRadarChartProps = {
   data: InsuranceParameter[]
   title?: string
-  color?: string
+  height?: number
 }
 
-// Define a more harmonious color palette
+// Enhanced color palette with better contrast and harmony
 const PARAM_COLORS = {
-  "Claim Settlement": "#3b82f6", // Blue
-  "Network Hospitals": "#10b981", // Emerald
-  "Co-payment": "#f59e0b", // Amber (softer than orange)
-  "Pre-Hospitalization": "#8b5cf6", // Violet
-  "Post-Hospitalization": "#6366f1", // Indigo
-  "Affordability": "#06b6d4", // Cyan
-  "default": "#64748b" // Slate (softer gray)
+  "Claim Settlement": "hsl(var(--chart-1))", // Using CSS variables for theme support
+  "Network Hospitals": "hsl(var(--chart-2))",
+  "Co-payment": "hsl(var(--chart-3))",
+  "Pre-Hospitalization": "hsl(var(--chart-4))",
+  "Post-Hospitalization": "hsl(var(--chart-5))",
+  "Affordability": "hsl(var(--primary))",
+  "default": "hsl(var(--muted-foreground))"
 }
 
 // Define a unified color for the main radar area
-const MAIN_COLOR = "#3b82f6" // Blue
+const MAIN_COLOR = "hsl(var(--primary))"
+const GRID_COLOR = "hsl(var(--border))"
+const AXIS_TEXT_COLOR = "hsl(var(--muted-foreground))"
 
-export function InsuranceRadarChart({
-  data,
-  title = "Policy Parameters",
-  color = "#3b82f6"
-}: InsuranceRadarChartProps) {
+export function InsuranceRadarChart({ data, title, height = 250 }: InsuranceRadarChartProps) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  
+  const handleMouseEnter = (_, index) => {
+    setActiveIndex(index);
+  };
+  
+  const handleMouseLeave = () => {
+    setActiveIndex(null);
+  };
+
   return (
-    <Card className="w-full shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-center text-lg font-medium text-gray-800">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full"> {/* Increased height for better visibility */}
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart
-              cx="50%"
-              cy="50%"
-              outerRadius="70%"
-              data={data}
-              margin={{ top: 10, right: 30, bottom: 30, left: 30 }}
-            >
-              {/* Softer grid lines */}
-              <PolarGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+    <div className="radar-chart-container">
+      {title && <h4 className="text-sm font-medium mb-2 text-center">{title}</h4>}
+      <ResponsiveContainer width="100%" height={height}>
+        <RadarChart
+          cx="50%"
+          cy="50%"
+          outerRadius="70%"
+          data={data}
+          margin={{ top: 10, right: 30, bottom: 30, left: 30 }}
+          onMouseLeave={handleMouseLeave}
+        >
+          {/* Enhanced grid with subtle animation */}
+          <PolarGrid 
+            stroke={GRID_COLOR} 
+            strokeDasharray="3 3" 
+            strokeOpacity={0.7}
+            className="radar-grid"
+          />
 
-              {/* Improved axis styling */}
-              <PolarAngleAxis
-                dataKey="name"
-                tick={{
-                  fill: "#475569",
-                  fontSize: 12,
-                  fontWeight: 500
-                }}
-                tickLine={false}
-              />
+          {/* Improved axis styling with better readability */}
+          <PolarAngleAxis
+            dataKey="name"
+            tick={{
+              fill: AXIS_TEXT_COLOR,
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: "0.01em",
+            }}
+            tickLine={false}
+            stroke={GRID_COLOR}
+            strokeOpacity={0.5}
+          />
 
-              <PolarRadiusAxis
-                angle={90}
-                domain={[0, 100]}
-                tick={false}
-                axisLine={false}
-                tickCount={5}
-              />
+          <PolarRadiusAxis
+            angle={90}
+            domain={[0, 100]}
+            tick={false}
+            axisLine={false}
+            tickCount={5}
+            stroke={GRID_COLOR}
+          />
 
-              {/* Main unified radar area */}
-              <Radar
-                name="Overall Performance"
-                dataKey="value"
-                stroke={MAIN_COLOR}
-                fill={MAIN_COLOR}
-                fillOpacity={0.5}
-                dot={{
-                  stroke: "#fff",
-                  strokeWidth: 2,
-                  fill: (entry) => PARAM_COLORS[entry.name] || PARAM_COLORS.default,
-                  r: 4
-                }}
-                activeDot={{
-                  stroke: "#fff",
-                  strokeWidth: 2,
-                  fill: (entry) => PARAM_COLORS[entry.name] || PARAM_COLORS.default,
-                  r: 6
-                }}
-              />
+          {/* Enhanced radar area with animations and better styling */}
+          <Radar
+            name="Overall Performance"
+            dataKey="value"
+            stroke={MAIN_COLOR}
+            fill={MAIN_COLOR}
+            fillOpacity={0.6}
+            strokeWidth={2}
+            className="radar-area"
+            onMouseEnter={handleMouseEnter}
+            dot={(props) => {
+              const { cx, cy, index, payload } = props;
+              const isActive = activeIndex === index;
+              const color = PARAM_COLORS[payload.name] || PARAM_COLORS.default;
+              
+              return (
+                <circle
+                  key={`dot-${payload.name}`} // Add a unique key prop
+                  cx={cx}
+                  cy={cy}
+                  r={isActive ? 6 : 4}
+                  fill={color}
+                  stroke="white"
+                  strokeWidth={2}
+                  className="radar-dot"
+                  style={{
+                    transition: "r 0.2s ease-in-out",
+                    filter: isActive ? "drop-shadow(0 0 2px rgba(0,0,0,0.3))" : "none"
+                  }}
+                />
+              );
+            }}
+            activeDot={{
+              stroke: "#fff",
+              strokeWidth: 2,
+              fill: (entry) => PARAM_COLORS[entry.name] || PARAM_COLORS.default,
+              r: 7,
+              className: "radar-active-dot"
+            }}
+          />
 
-              {/* Enhanced tooltip */}
-              <Tooltip
-                formatter={(value: number, name: string) => [`${value}%`, name]}
-                contentStyle={{
-                  backgroundColor: "white",
-                  borderRadius: "0.5rem",
-                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                  border: "none",
-                  padding: "10px 14px"
-                }}
-                itemStyle={{
-                  fontSize: "13px",
-                  color: "#1e293b"
-                }}
-                labelStyle={{
-                  fontWeight: "bold",
-                  marginBottom: "4px",
-                  fontSize: "14px",
-                  color: "#0f172a"
-                }}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
+          {/* Enhanced tooltip with better styling */}
+          <Tooltip
+            formatter={(value: number, name: string) => [`${value}%`, name]}
+            contentStyle={{
+              backgroundColor: "hsl(var(--card))",
+              borderRadius: "0.5rem",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+              border: "1px solid hsl(var(--border))",
+              padding: "10px 14px"
+            }}
+            itemStyle={{
+              fontSize: "13px",
+              color: "hsl(var(--foreground))"
+            }}
+            labelStyle={{
+              fontWeight: "bold",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "hsl(var(--foreground))"
+            }}
+            wrapperStyle={{
+              transition: "opacity 0.2s ease-in-out",
+              zIndex: 10
+            }}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
 
-        {/* Improved legend with better spacing and styling */}
-        <div className="flex flex-wrap justify-center gap-4 mt-4 px-2">
-          {data.map((param) => (
-            <div key={param.name} className="flex items-center text-xs bg-gray-50 px-2 py-1 rounded-full shadow-sm">
-              <span
-                className="inline-block w-3 h-3 mr-1.5 rounded-full"
-                style={{ backgroundColor: PARAM_COLORS[param.name] || PARAM_COLORS.default }}
-              />
-              <span className="font-medium text-gray-700">{param.name}: <span className="text-gray-900">{param.value}%</span></span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Improved legend with better spacing, styling and hover effects */}
+      <div className="flex flex-wrap justify-center gap-3 mt-4 px-2">
+        {data.map((param, idx) => (
+          <div 
+            key={param.name} 
+            className="flex items-center text-xs bg-muted/50 px-2.5 py-1.5 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200"
+            onMouseEnter={() => handleMouseEnter(null, idx)}
+            onMouseLeave={handleMouseLeave}
+            style={{
+              backgroundColor: activeIndex === idx ? `color-mix(in srgb, ${PARAM_COLORS[param.name] || PARAM_COLORS.default} 15%, hsl(var(--background)))` : "",
+              transition: "background-color 0.2s ease-in-out"
+            }}
+          >
+            <span
+              className="inline-block w-3 h-3 mr-1.5 rounded-full"
+              style={{ 
+                backgroundColor: PARAM_COLORS[param.name] || PARAM_COLORS.default,
+                boxShadow: activeIndex === idx ? "0 0 0 2px rgba(255,255,255,0.8)" : "none",
+                transition: "box-shadow 0.2s ease-in-out"
+              }}
+            />
+            <span className="font-medium text-foreground">
+              {param.name}: <span className="text-primary font-semibold">{param.value}%</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Add CSS for animations */}
+      <style jsx>{`
+        .radar-area {
+          transition: fill-opacity 0.3s ease-in-out;
+        }
+        
+        .radar-area:hover {
+          fill-opacity: 0.7;
+        }
+        
+        @keyframes pulse {
+          0% { opacity: 0.7; }
+          50% { opacity: 1; }
+          100% { opacity: 0.7; }
+        }
+        
+        .radar-active-dot {
+          animation: pulse 1.5s infinite;
+        }
+      `}</style>
+    </div>
   )
 }

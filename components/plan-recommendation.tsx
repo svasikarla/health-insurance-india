@@ -732,35 +732,6 @@ export function PlanRecommendation({ formData, onReset }: PlanRecommendationProp
                           </ul>
                         </div>
                       </div>
-                      
-                      {/* Alternative Plans - now positioned below plan details */}
-                      <div className="mt-6 pt-6 border-t">
-                        <h3 className="text-lg font-semibold mb-3">Alternative Plans</h3>
-                        <div className="space-y-4">
-                          {alternativePlans.map((plan, index) => (
-                            <div key={index} className="p-4 border rounded-lg">
-                              <div className="flex justify-between items-center mb-2">
-                                <div>
-                                  <h4 className="font-medium">{plan.name}</h4>
-                                  <p className="text-sm text-gray-500">{plan.provider}</p>
-                                </div>
-                                <div className="text-sm bg-muted px-2 py-1 rounded-full">
-                                  {plan.suitabilityScore}% Match
-                                </div>
-                              </div>
-                              
-                              <div className="flex justify-between text-sm">
-                                <span>
-                                  Premium: <span className="font-medium">{plan.premium}</span>
-                                </span>
-                                <span>
-                                  Coverage: <span className="font-medium">{plan.coverage}</span>
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold mb-3">Why We Recommend This</h3>
@@ -787,22 +758,64 @@ export function PlanRecommendation({ formData, onReset }: PlanRecommendationProp
                           </li>
                         ))}
                       </ul>
-
-                       <div className="mt-6 pt-6 border-t">
-                        <h3 className="text-lg font-semibold mb-3">Plan Comparisons</h3>
-                        <div className="space-y-6">
-                          {alternativePlans.slice(0, 2).map((plan, index) => (
-                            recommendedPlans.length > index + 1 && (
-                              <div key={index} className="mb-4">
+                    </div>
+                  </div>
+                  
+                  {/* Alternative Plans - moved outside the main grid for better visibility */}
+                  <div className="mt-8 pt-6 border-t">
+                    <h3 className="text-xl font-semibold mb-4">Alternative Plans</h3>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {alternativePlans.map((plan, index) => (
+                        <Card key={index} className="border shadow-sm hover:shadow transition-shadow">
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <CardTitle className="text-lg">{plan.name}</CardTitle>
+                                <CardDescription>{plan.provider}</CardDescription>
+                              </div>
+                              <div className="text-sm bg-muted px-2 py-1 rounded-full">
+                                {plan.suitabilityScore}% Match
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pb-4">
+                            <div className="flex justify-between text-sm mb-3">
+                              <span>
+                                Premium: <span className="font-medium">{plan.premium}</span>
+                              </span>
+                              <span>
+                                Coverage: <span className="font-medium">{plan.coverage}</span>
+                              </span>
+                            </div>
+                            
+                            {/* Key features for alternative plans */}
+                            {plan.keyFeatures && (
+                              <div className="mt-2">
+                                <h4 className="text-sm font-medium text-gray-500 mb-1">Key Features</h4>
+                                <ul className="text-sm space-y-1">
+                                  {plan.keyFeatures.slice(0, 3).map((feature, idx) => (
+                                    <li key={idx} className="flex items-start gap-1">
+                                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                                      <span>{feature}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Radar chart for alternative plans */}
+                            {recommendedPlans.length > index + 1 && (
+                              <div className="mt-3">
                                 <InsuranceRadarChart 
                                   data={prepareRadarChartData(recommendedPlans[index + 1])} 
                                   title={`${plan.name} Analysis`}
+                                  height={180}
                                 />
                               </div>
-                            )
-                          ))}
-                        </div>
-                      </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
                 </CardContent>
