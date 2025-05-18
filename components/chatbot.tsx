@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import ReactMarkdown from 'react-markdown'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react"
+import { Mic, MicOff, Send } from "lucide-react"
 import { useLanguage } from "./language-provider"
 import { AudioPlayer } from "./audio-player"
 
@@ -197,7 +198,20 @@ export function Chatbot() {
                 message.sender === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
               }`}
             >
-              <p>{message.text}</p>
+              {message.sender === "user" ? (
+                <p>{message.text}</p>
+              ) : (
+                <div className="prose prose-sm max-w-none dark:prose-invert prose-p:mt-2 prose-p:mb-2 first:prose-p:mt-0 last:prose-p:mb-0">
+                  <ReactMarkdown
+                    components={{
+                      // Example: customize how paragraphs are rendered
+                      p: ({node, ...props}) => <p className="my-2" {...props} />
+                    }}
+                  >
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+              )}
               <p className="text-xs opacity-70 mt-1">
                 {message.timestamp.toLocaleTimeString([], {
                   hour: "2-digit",
@@ -263,3 +277,8 @@ export function Chatbot() {
     </div>
   )
 }
+
+
+
+
+
